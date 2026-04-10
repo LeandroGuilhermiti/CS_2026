@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Image Model</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            background: white;
+            padding: 2rem;
+            margin-top: 3rem;
+            margin-bottom: 3rem;
+        }
+        #webcam-container canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            display: block;
+            margin: 0 auto;
+        }
+        .progress {
+            height: 25px;
+            border-radius: 8px;
+            background-color: #e9ecef;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+        }
+        .progress-bar {
+            font-weight: bold;
+            font-size: 0.9rem;
+            line-height: 25px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="main-card text-center">
+                <h2 class="mb-4 text-primary fw-bold">
+                    <i class="bi bi-cpu me-2"></i>Reconhecimento de Imagem
+                </h2>
+                <p class="text-muted mb-4">Autorize o acesso à câmera e aguarde o carregamento do modelo de Inteligência Artificial para iniciar a classificação em tempo real.</p>
+                
+                <button type="button" id="startButton" class="btn btn-primary btn-lg mb-4 px-5 rounded-pill shadow-sm transition" onclick="init()">
+                    <i class="bi bi-camera-video-fill me-2"></i> Iniciar Câmera
+                </button>
+
+                <div id="loading" class="d-none mb-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Carregando modelo e iniciando câmera...</p>
+                </div>
+
+                <div id="webcam-container" class="mb-4"></div>
+                <div id="label-container" class="text-start"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script type="text/javascript">
+    const URL = "https://teachablemachine.withgoogle.com/models/KXT3WxGWp/";
+    let model, webcam, labelContainer, maxPredictions;
+
+    async function init() {
+        // Desabilita o botão e mostra o loading
+        const startBtn = document.getElementById("startButton");
+        const loadingInfo = document.getElementById("loading");
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Carregando...';
+        loadingInfo.classList.remove("d-none");
+
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        try {
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true; 
+            webcam = new tmImage.Webcam(400, 400, flip); 
+            await webcam.setup(); 
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // Esconde o loading após iniciar a câmera
+            loadingInfo.classList.add("d-none");
+            startBtn.classList.add("d-none");
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            
+            labelContainer = document.getElementById("label-container");
+            
+            // Construção das barras de progresso para cada classe
+            for (let i = 0; i < maxPredictions; i++) {
+                const classWrapper = document.createElement("div");
+                classWrapper.className = "mb-3";
+
+                const labelDiv = document.createElement("div");
+                labelDiv.className = "d-flex justify-content-between mb-1 fw-semibold text-secondary";
+
+                const classNameSpan = document.createElement("span");
+                classNameSpan.id = "class-name-" + i;
+                
+                const percentageSpan = document.createElement("span");
+                percentageSpan.id = "class-percent-" + i;
+
+                labelDiv.appendChild(classNameSpan);
+                labelDiv.appendChild(percentageSpan);
+
+                const progressDiv = document.createElement("div");
+                progressDiv.className = "progress";
+
+                const progressBar = document.createElement("div");
+                progressBar.id = "class-bar-" + i;
+                progressBar.className = "progress-bar progress-bar-striped progress-bar-animated";
+                progressBar.setAttribute("role", "progressbar");
+                progressBar.style.width = "0%";
+                progressBar.setAttribute("aria-valuenow", "0");
+                progressBar.setAttribute("aria-valuemin", "0");
+                progressBar.setAttribute("aria-valuemax", "100");
+
+                progressDiv.appendChild(progressBar);
+                classWrapper.appendChild(labelDiv);
+                classWrapper.appendChild(progressDiv);
+                
+                labelContainer.appendChild(classWrapper);
+            }
+        } catch (error) {
+            console.error("Erro ao inicializar o modelo ou câmera: ", error);
+            loadingInfo.innerHTML = '<p class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Erro ao acessar a câmera ou carregar o modelo. Verifique as permissões.</p>';
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="bi bi-camera-video-fill me-2"></i> Tentar Novamente';
+        }
+    }
+
+    async function loop() {
+        webcam.update(); 
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        const prediction = await model.predict(webcam.canvas);
+        
+        for (let i = 0; i < maxPredictions; i++) {
+            const percent = Math.round(prediction[i].probability * 100);
+            
+            document.getElementById("class-name-" + i).innerText = prediction[i].className;
+            document.getElementById("class-percent-" + i).innerText = percent + "%";
+
+            const bar = document.getElementById("class-bar-" + i);
+            bar.style.width = percent + "%";
+            bar.setAttribute("aria-valuenow", percent);
+            bar.innerText = percent > 5 ? percent + "%" : ""; 
+
+            // Altera a cor da barra dependendo da porcentagem para dar feedback visual
+            if(percent > 75) {
+                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-success";
+            } else if (percent > 40) {
+                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-warning";
+            } else {
+                bar.className = "progress-bar progress-bar-striped progress-bar-animated bg-secondary";
+            }
+        }
+    }
+</script>
+</body>
+</html>
