@@ -12,20 +12,20 @@ def eh_primo(numero):
     if numero < 2:
         return False
     
-    # 2 é o único número primo par
-    if numero == 2:
+    # 2 e 3 são primos
+    if numero in (2, 3):
         return True
     
-    # Números pares maiores que 2 não são primos
-    if numero % 2 == 0:
+    # Eliminando múltiplos de 2 e 3 rapidamente
+    if numero % 2 == 0 or numero % 3 == 0:
         return False
     
-    # Verifica divisibilidade por números ímpares até a raiz quadrada
-    i = 3
+    # Usa a forma 6k ± 1 para reduzir os testes de divisibilidade
+    i = 5
     while i * i <= numero:
-        if numero % i == 0:
+        if numero % i == 0 or numero % (i + 2) == 0:
             return False
-        i += 2
+        i += 6
     
     return True
 
