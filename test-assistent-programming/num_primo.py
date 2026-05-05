@@ -1,43 +1,43 @@
+"""Fornece utilitários para verificação de números primos e testes."""
+
+
 def eh_primo(numero):
-    """
-    Verifica se um número é primo.
-    
+    """Verifica se um número inteiro é primo.
+
     Args:
-        numero: Um número inteiro a ser verificado
-        
+        numero (int): Número inteiro a ser verificado.
+
     Returns:
-        bool: True se o número é primo, False caso contrário
+        bool: True se o número for primo, False caso contrário.
     """
-    # Números menores que 2 não são primos
     if numero < 2:
         return False
-    
-    # 2 e 3 são primos
+
     if numero in (2, 3):
         return True
-    
-    # Eliminando múltiplos de 2 e 3 rapidamente
+
     if numero % 2 == 0 or numero % 3 == 0:
         return False
-    
-    # Usa a forma 6k ± 1 para reduzir os testes de divisibilidade
+
     i = 5
     while i * i <= numero:
         if numero % i == 0 or numero % (i + 2) == 0:
             return False
         i += 6
-    
+
     return True
 
 
 def testar_funcao():
-    """Testa a função eh_primo com vários casos de teste."""
-    
+    """Executa casos de teste para validar a função eh_primo.
+
+    Returns:
+        bool: True se todos os testes passarem, False caso contrário.
+    """
     print("=" * 50)
     print("TESTANDO A FUNÇÃO eh_primo()")
     print("=" * 50)
     
-    # Casos de teste: (número, resultado_esperado)
     testes = [
         (0, False, "Zero não é primo"),
         (1, False, "Um não é primo"),
